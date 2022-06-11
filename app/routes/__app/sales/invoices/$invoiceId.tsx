@@ -1,22 +1,23 @@
 import type { Deposit, LineItem } from "@prisma/client";
 import type { ActionFunction, LoaderFunction } from "@remix-run/node";
+import type { DueStatus } from "~/models/invoice.server";
+import { useEffect, useRef } from "react";
 import { json } from "@remix-run/node";
 import {
-  Links,
+  useCatch,
   useFetcher,
   useLoaderData,
   useLocation,
+  useParams,
+  Link,
 } from "@remix-run/react";
-import { useRef } from "react";
-import { Link } from "react-router-dom";
-import invariant from "tiny-invariant";
-import { inputClasses, LabelText, submitButtonClasses } from "~/components";
-import type { DueStatus } from "~/models/invoice.server";
-import { getInvoiceDerivedData } from "~/models/invoice.server";
-import { getInvoiceDetails } from "~/models/invoice.server";
-import { createUser } from "~/models/user.server";
-import { currencyFormatter, parseDate } from "~/utils";
+
 import { requireUser } from "~/utils/session.server";
+import { getInvoiceDetails } from "~/models/invoice.server";
+import { inputClasses, LabelText, submitButtonClasses } from "~/components";
+import { currencyFormatter, parseDate } from "~/utils";
+import invariant from "tiny-invariant";
+import { createDeposit } from "~/models/deposit.server";
 
 type LoaderData = {
   customerName: string;
@@ -40,9 +41,66 @@ type ActionData = {
   };
 };
 
+function validateAmount(amount: number) {
+  if (amount <= 0) return "Must be greater than 0";
+  if (Number(amount.toFixed(2)) !== amount) {
+    return "Must only have two decimal places";
+  }
+  return null;
+}
+
+function validateDepositDate(date: Date) {
+  if (Number.isNaN(date.getTime())) {
+    return "Please enter a valid date";
+  }
+  return null;
+}
+
 export const action: ActionFunction = async ({ request, params }) => {
-  // await createUser("ruya", "ads");
-  return json({});
+  await requireUser(request);
+  const { invoiceId } = params;
+
+  if (typeof invoiceId !== "string") {
+    throw new Error("This should be mission unpossible");
+  }
+
+  const formData = await request.formData();
+  const intent = formData.get("intent");
+  invariant(typeof intent === "string", "intent required");
+
+  switch (intent) {
+    case "create-deposit": {
+      const amount = Number(formData.get("amount"));
+      const depositDateString = formData.get("depositDate");
+      const note = formData.get("note");
+
+      invariant(!Number.isNaN(amount), "amount must be a number");
+      invariant(typeof depositDateString === "string", "dueDate is required");
+      invariant(typeof note === "string", "note is required");
+
+      const depositDate = parseDate(depositDateString);
+
+      const errors: ActionData["errors"] = {
+        amount: validateAmount(amount),
+        depositDate: validateDepositDate(depositDate),
+      };
+
+      const hasErrors = Object.values(errors).some(
+        (errorMessage) => errorMessage
+      );
+
+      if (hasErrors) {
+        return json<ActionData>({ errors });
+      }
+
+      await createDeposit({ invoiceId, amount, note, depositDate });
+      return new Response("ok");
+    }
+
+    default: {
+      throw new Error(`Unsupported intent ${intent}`);
+    }
+  }
 };
 
 export const loader: LoaderFunction = async ({ request, params }) => {
@@ -120,6 +178,7 @@ export default function InvoiceRoute() {
       ))}
       <div className={`${lineItemClassName} font-bold`}>
         <div>Net Total</div>
+        <div>{currencyFormatter.format(data.totalAmount)}</div>
       </div>
       <div className="h-4" />
       <Deposits />
@@ -147,7 +206,7 @@ function LineItemDisplay({
 
 interface DepositFormControlsCollection extends HTMLFormControlsCollection {
   amount?: HTMLInputElement;
-  depositData?: HTMLInputElement;
+  depositDate?: HTMLInputElement;
   note?: HTMLInputElement;
   intent?: HTMLInputElement;
 }
@@ -170,18 +229,38 @@ function Deposits() {
     const depositDate =
       typeof depositDateVal === "string" ? parseDate(depositDateVal) : null;
 
-    invariant(depositDate, "required");
-
-    deposits.push({
-      id: "new",
-      amount,
-      depositDateFormatted: depositDate.toLocaleDateString(),
-    });
+    if (
+      !validateAmount(amount) &&
+      depositDate &&
+      !validateDepositDate(depositDate)
+    ) {
+      deposits.push({
+        id: "new",
+        amount,
+        depositDateFormatted: depositDate.toLocaleDateString(),
+      });
+    }
   }
 
   const errors = newDepositFetcher.data?.errors as
     | ActionData["errors"]
     | undefined;
+
+  useEffect(() => {
+    if (!formRef.current) return;
+    if (newDepositFetcher.type !== "done") return;
+
+    const formEl = formRef.current as DepositFormElement;
+
+    if (errors?.amount) {
+      formEl.elements.amount?.focus();
+    } else if (errors?.depositDate) {
+      formEl.elements.depositDate?.focus();
+    } else if (document.activeElement === formEl.elements.intent) {
+      formEl.reset();
+      formEl.elements.amount?.focus();
+    }
+  }, [newDepositFetcher.type, errors]);
 
   return (
     <div>
@@ -277,6 +356,32 @@ function Deposits() {
           </div>
         </div>
       </newDepositFetcher.Form>
+    </div>
+  );
+}
+
+export function CatchBoundary() {
+  const caught = useCatch();
+  const params = useParams();
+
+  if (caught.status === 404) {
+    return (
+      <div className="p-12 text-red-500">
+        No invoice found with ID of "{params.invoiceId}"
+      </div>
+    );
+  }
+}
+
+export function ErrorBoundary({ error }: { error: Error }) {
+  console.error(error);
+
+  return (
+    <div className="absolute inset-0 flex justify-center bg-red-100 pt-4">
+      <div className="text-center text-red-brand">
+        <div className="text-[14px] font-bold">Oh snap!</div>
+        <div className="px-2 text-[12px]">There was a problem. Sorry.</div>
+      </div>
     </div>
   );
 }

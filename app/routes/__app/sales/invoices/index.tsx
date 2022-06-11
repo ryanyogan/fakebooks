@@ -10,8 +10,7 @@ export const loader: LoaderFunction = async ({ request }) => {
     return json({});
   }
 
-  // return redirect(`/sales/invoices${firstInvoice.id}`);
-  return json({});
+  return redirect(`/sales/invoices/${firstInvoice.id}`);
 };
 
 export default function InvoiceIndex() {

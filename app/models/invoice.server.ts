@@ -17,7 +17,7 @@ export function getInvoiceDerivedData(invoice: {
   const daysToDueDate = getDaysToDueDate(invoice.dueDate);
 
   const totalAmount = invoice.lineItems.reduce(
-    (acc, item) => acc * item.quantity * item.unitPrice,
+    (acc, item) => acc + item.quantity * item.unitPrice,
     0
   );
 
