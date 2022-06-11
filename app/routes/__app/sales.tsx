@@ -36,6 +36,9 @@ export default function SalesRoute() {
   const customerMatches = matches.some(
     (m) => m.id === "routes/__app/sales/customers"
   );
+  const depositsMatches = matches.some(
+    (m) => m.id === "routes/__app/sales/deposits"
+  );
 
   return (
     <div className="relative h-full pt-10">
@@ -71,7 +74,7 @@ export default function SalesRoute() {
         <NavLink
           prefetch="intent"
           to="deposits"
-          className={linkClassName({ isActive: false })}
+          className={linkClassName({ isActive: depositsMatches })}
         >
           Deposits
         </NavLink>
