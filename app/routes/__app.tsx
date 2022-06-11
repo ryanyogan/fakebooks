@@ -11,6 +11,7 @@ import {
 
 export default function AppRoute() {
   const transition = useTransition();
+  console.log(transition);
   const showSpinner = useSpinDelay(transition.state !== "idle", {
     delay: 200,
     minDuration: 300,
@@ -51,7 +52,7 @@ export default function AppRoute() {
           </div>
         </div>
       </div>
-      <div className="flex-1">
+      <div className="mx-10 flex-1">
         <Outlet />
       </div>
     </div>
