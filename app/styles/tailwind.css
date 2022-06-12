@@ -1046,6 +1046,10 @@ video {
   padding-top: 1rem;
 }
 
+.pl-1 {
+  padding-left: 0.25rem;
+}
+
 .text-center {
   text-align: center;
 }
@@ -1108,6 +1112,11 @@ video {
 
 .text-m-h3 {
   font-size: 20px;
+  line-height: 24px;
+}
+
+.text-m-p-sm {
+  font-size: 14px;
   line-height: 24px;
 }
 
@@ -1208,6 +1217,11 @@ video {
   color: rgb(244 66 80 / var(--tw-text-opacity));
 }
 
+.text-gray-500 {
+  --tw-text-opacity: 1;
+  color: rgb(106 114 109 / var(--tw-text-opacity));
+}
+
 .underline {
   -webkit-text-decoration-line: underline;
           text-decoration-line: underline;
@@ -1304,6 +1318,11 @@ video {
 
   .md\:gap-6 {
     gap: 1.5rem;
+  }
+
+  .md\:text-d-p-sm {
+    font-size: 16px;
+    line-height: 24px;
   }
 }
 
